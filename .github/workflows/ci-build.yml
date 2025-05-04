@@ -1,0 +1,58 @@
+# 文件：.github/workflows/ci-build.yml
+name: Build GKI Kernel
+
+# 触发条件：当 dev 分支有新的推送时
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  compile-kernel:
+    name: 编译 GKI 内核
+    # 只给贴了这两个标签的 Runner 执行
+    runs-on:
+      - self-hosted
+      - ares-kernel
+
+    steps:
+      - name: Checkout 源码
+        uses: actions/checkout@v3
+
+      - name: 安装交叉编译链 + 依赖
+        run: |
+          sudo apt update
+          sudo apt install -y gcc-aarch64-linux-gnu clang make bc bison flex libssl-dev libelf-dev dtc
+
+      - name: 准备环境变量
+        run: |
+          export ARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+
+      - name: 拉取内核源码
+        run: git clone https://github.com/Tkpointz/android_kernel_aresin.git kernel-src
+
+      - name: 集成 KernelSU-Next
+        run: |
+          cd kernel-src
+          curl -fsSL https://raw.githubusercontent.com/supercutefish/KernelSU-NEXT_Mi-ares.git/kernel/setup.sh \
+            | bash -s next
+
+      - name: 编译 GKI
+        run: |
+          cd kernel-src
+          make O=out gki_defconfig
+          make -j$(nproc) O=out
+
+      - name: 打包 boot.img
+        run: |
+          mkbootimg \
+            --kernel out/arch/arm64/boot/Image.gz \
+            --ramdisk path/to/ramdisk.img \
+            --output patched-boot.img
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v3
+        with:
+          name: patched-boot
+          path: patched-boot.img
