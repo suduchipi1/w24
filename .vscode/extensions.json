@@ -1,5 +1,6 @@
 {
     "recommendations": [
+        "ms-vscode.powershell",
         "esbenp.prettier-vscode",
         "dbaeumer.vscode-eslint",
         "ms-ceintl.vscode-language-pack-zh-hans"
